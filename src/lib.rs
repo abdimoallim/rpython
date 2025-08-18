@@ -254,12 +254,14 @@ impl Vm {
         let mut frames: Vec<(usize, CodeObject, Env)> = Vec::new();
         let mut cur = code.clone();
 
+        dbg!(cur.instructions.clone());
+
         loop {
             if ip >= cur.instructions.len() {
                 return Ok(PyObject::None);
             }
 
-            match cur.instructions[ip].clone() {
+            match cur.instructions[ip] {
                 Op::LoadConst(idx) => {
                     self.stack.push(cur.consts[idx].clone());
                     ip += 1;
@@ -679,9 +681,17 @@ impl Compiler {
                 for stmt in body {
                     self.compile_stmt(stmt, code)?;
                 }
-                code.instructions.push(Op::LoadConst(
-                    self.const_index(&mut code.clone(), PyObject::None),
-                ));
+                // code.instructions.push(Op::LoadConst(
+                //     self.const_index(&mut code.clone(), PyObject::None),
+                // ));
+                // let none_idx = self.const_index(code, PyObject::None);
+                // code.instructions.push(Op::LoadConst(none_idx));
+
+                if body.is_empty() {
+                    let none_idx = self.const_index(code, PyObject::None);
+                    code.instructions.push(Op::LoadConst(none_idx));
+                }
+
                 code.instructions.push(Op::Return);
                 Ok(())
             }
@@ -706,7 +716,7 @@ impl Compiler {
             }
             ast::Stmt::Expr(e) => {
                 self.compile_expr(&e.value, code)?;
-                code.instructions.push(Op::Pop);
+                // code.instructions.push(Op::Pop);
                 Ok(())
             }
             ast::Stmt::FunctionDef(fd) => {
@@ -862,7 +872,8 @@ mod tests {
 
     #[test]
     fn expr() {
-        let _ = execute("2", &[]).unwrap();
+        let n = execute("2", &[]).unwrap();
+        dbg!("found:", n.to_string());
     }
 
     #[test]
