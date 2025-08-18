@@ -45,6 +45,21 @@ impl Display for PyObject {
     }
 }
 
+impl fmt::Debug for PyObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PyObject::Int(v) => write!(f, "Int({})", v),
+            PyObject::Float(v) => write!(f, "Float({})", v),
+            PyObject::Bool(v) => write!(f, "Bool({})", v),
+            PyObject::Str(v) => write!(f, "Str({:?})", v),
+            PyObject::None => write!(f, "None"),
+            PyObject::Function(func) => write!(f, "Function({})", func.name),
+            PyObject::NativeFunction(func) => write!(f, "NativeFunction({})", func.name),
+            PyObject::Type(t) => write!(f, "Type({})", t.name),
+        }
+    }
+}
+
 impl Default for PyObject {
     fn default() -> Self {
         PyObject::None
@@ -146,12 +161,60 @@ pub enum Op {
     JumpIfFalse(usize),
 }
 
+impl Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Op::LoadConst(idx) => write!(f, "LoadConst({})", idx),
+            Op::LoadName(idx) => write!(f, "LoadName({})", idx),
+            Op::StoreName(idx) => write!(f, "StoreName({})", idx),
+            Op::LoadGlobal(idx) => write!(f, "LoadGlobal({})", idx),
+            Op::StoreGlobal(idx) => write!(f, "StoreGlobal({})", idx),
+            Op::Pop => write!(f, "Pop"),
+            Op::Return => write!(f, "Return"),
+            Op::Call(argc) => write!(f, "Call({})", argc),
+            Op::Def {
+                name,
+                arity,
+                code_idx,
+            } => write!(
+                f,
+                "Def(name={}, arity={}, code_idx={})",
+                name, arity, code_idx
+            ),
+            Op::Add => write!(f, "Add"),
+            Op::Sub => write!(f, "Sub"),
+            Op::Mul => write!(f, "Mul"),
+            Op::Div => write!(f, "Div"),
+            Op::Eq => write!(f, "Eq"),
+            Op::Ne => write!(f, "Ne"),
+            Op::Lt => write!(f, "Lt"),
+            Op::Le => write!(f, "Le"),
+            Op::Gt => write!(f, "Gt"),
+            Op::Ge => write!(f, "Ge"),
+            Op::Jump(target) => write!(f, "Jump({})", target),
+            Op::JumpIfFalse(target) => write!(f, "JumpIfFalse({})", target),
+        }
+    }
+}
+
 #[derive(Clone, Default, PartialEq)]
 pub struct CodeObject {
     pub consts: Vec<PyObject>,
     pub names: Vec<String>,
     pub instructions: Vec<Op>,
     pub nested: Vec<CodeObject>,
+}
+
+impl CodeObject {
+    pub fn debug_print(&self) {
+        println!("Constants: {:?}", self.consts);
+        println!("Names: {:?}", self.names);
+        println!("Instructions:");
+
+        for (i, op) in self.instructions.iter().enumerate() {
+            println!("  {}: {}", i, op);
+        }
+    }
 }
 
 #[derive(Clone, Default, PartialEq)]
@@ -254,7 +317,8 @@ impl Vm {
         let mut frames: Vec<(usize, CodeObject, Env)> = Vec::new();
         let mut cur = code.clone();
 
-        dbg!(cur.instructions.clone());
+        // dbg!(cur.instructions.clone());
+        cur.debug_print();
 
         loop {
             if ip >= cur.instructions.len() {
@@ -400,7 +464,9 @@ impl Vm {
                         globals: self.env.clone(),
                     };
 
-                    self.stack.push(PyObject::Function(Rc::new(f)));
+                    self.env
+                        .locals
+                        .insert(fname, PyObject::Function(Rc::new(f)));
                     ip += 1;
                 }
                 Op::Add => {
@@ -731,10 +797,12 @@ impl Compiler {
                 for s in &fd.body {
                     self.compile_stmt(s, &mut fcode)?;
                 }
-                fcode.instructions.push(Op::LoadConst(
-                    self.const_index(&mut fcode.clone(), PyObject::None),
-                ));
-                fcode.instructions.push(Op::Return);
+                // fcode.instructions.push(Op::LoadConst(
+                //     self.const_index(&mut fcode.clone(), PyObject::None),
+                // ));
+                let none_idx = self.const_index(&mut fcode, PyObject::None);
+                fcode.instructions.push(Op::LoadConst(none_idx));
+                // fcode.instructions.push(Op::Return);
                 let code_idx = code.nested.len();
                 code.nested.push(fcode);
                 let name_idx = self.name_index(code, fd.name.as_str());
@@ -744,7 +812,18 @@ impl Compiler {
                     arity,
                     code_idx,
                 });
-                code.instructions.push(Op::StoreName(name_idx));
+                // code.instructions.push(Op::StoreName(name_idx));
+                Ok(())
+            }
+            ast::Stmt::Return(ret) => {
+                if let Some(value) = &ret.value {
+                    self.compile_expr(value, code)?;
+                } else {
+                    let none_idx = self.const_index(code, PyObject::None);
+                    code.instructions.push(Op::LoadConst(none_idx));
+                }
+
+                code.instructions.push(Op::Return);
                 Ok(())
             }
             _ => Err("unsupported statement".to_string()),
@@ -884,7 +963,7 @@ mod tests {
 
     #[test]
     fn function_call() {
-        let r = execute("def add(a,b):\n  a+b\nadd(2,3)", &[]).unwrap();
+        let r = execute("def add(a,b):\n  return a+b\nadd(2,3)", &[]).unwrap();
         assert_eq!(format!("{}", r), "5");
     }
 
