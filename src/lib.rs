@@ -976,7 +976,7 @@ mod tests {
                 Err("bad args".to_string())
             }
         });
-        let r = execute("sum2(10,32)", &[("sum2", 2, f)]).unwrap();
-        assert_eq!(format!("{}", r), "42");
+        let r = execute("sum2(7,2)", &[("sum2", 2, f)]).unwrap();
+        assert_eq!(format!("{}", r), "9");
     }
 }
