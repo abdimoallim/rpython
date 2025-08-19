@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     fn expr() {
-        let n = execute("2", &[]).unwrap();
+        let n = execute("2.3", &[]).unwrap();
         dbg!("found:", n.to_string());
     }
 

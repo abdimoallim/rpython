@@ -278,6 +278,42 @@ impl Vm {
                         .insert(fname, PyObject::Function(Rc::new(f)));
                     ip += 1;
                 }
+                Op::UnaryNeg => {
+                    let operand = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match operand {
+                        PyObject::Int(x) => self.stack.push(PyObject::Int(-x)),
+                        PyObject::Float(x) => self.stack.push(PyObject::Float(-x)),
+                        _ => {
+                            return Err(
+                                "TypeError: unsupported operand type for unary -".to_string()
+                            );
+                        }
+                    }
+
+                    ip += 1;
+                }
+                Op::UnaryPos => {
+                    let operand = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match operand {
+                        PyObject::Int(x) => self.stack.push(PyObject::Int(x)),
+                        PyObject::Float(x) => self.stack.push(PyObject::Float(x)),
+                        _ => {
+                            return Err(
+                                "TypeError: unsupported operand type for unary +".to_string()
+                            );
+                        }
+                    }
+
+                    ip += 1;
+                }
                 Op::Add => {
                     let b = self
                         .stack

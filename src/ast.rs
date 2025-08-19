@@ -197,6 +197,17 @@ impl Compiler {
                 code.instructions.push(Op::LoadConst(idx));
                 Ok(())
             }
+            ast::Expr::UnaryOp(unary) => {
+                self.compile_expr(&unary.operand, code)?;
+
+                match unary.op {
+                    ast::UnaryOp::UAdd => code.instructions.push(Op::UnaryPos),
+                    ast::UnaryOp::USub => code.instructions.push(Op::UnaryNeg),
+                    _ => return Err("unsupported unary operator".to_string()),
+                }
+
+                Ok(())
+            }
             ast::Expr::Name(n) => {
                 let idx = self.name_index(code, n.id.as_str());
                 code.instructions.push(Op::LoadName(idx));

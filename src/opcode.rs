@@ -21,6 +21,9 @@ pub enum Op {
         arity: usize,
         code_idx: usize,
     },
+    UnaryNeg,
+    // ??
+    UnaryPos,
     Add,
     Sub,
     Mul,
@@ -62,6 +65,8 @@ impl Display for Op {
                 "Def(name={}, arity={}, code_idx={})",
                 name, arity, code_idx
             ),
+            Op::UnaryNeg => write!(f, "UnaryMinus"),
+            Op::UnaryPos => write!(f, "UnaryPlus"),
             Op::Add => write!(f, "Add"),
             Op::Sub => write!(f, "Sub"),
             Op::Mul => write!(f, "Mul"),
