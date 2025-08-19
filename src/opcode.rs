@@ -27,6 +27,7 @@ pub enum Op {
     Ge,
     Jump(usize),
     JumpIfFalse(usize),
+    JumpIfTrue(usize),
 }
 
 impl Display for Op {
@@ -60,6 +61,7 @@ impl Display for Op {
             Op::Gt => write!(f, "Gt"),
             Op::Ge => write!(f, "Ge"),
             Op::Jump(target) => write!(f, "Jump({})", target),
+            Op::JumpIfTrue(target) => write!(f, "JumpIfTrue({})", target),
             Op::JumpIfFalse(target) => write!(f, "JumpIfFalse({})", target),
         }
     }

@@ -379,6 +379,17 @@ impl Vm {
                 Op::Jump(target) => {
                     ip = target;
                 }
+                Op::JumpIfTrue(target) => {
+                    let v = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    if !is_falsey(&v) {
+                        ip = target;
+                    } else {
+                        ip += 1;
+                    }
+                }
                 Op::JumpIfFalse(target) => {
                     let v = self
                         .stack

@@ -77,4 +77,10 @@ mod tests {
         let r = execute("print(9)\ntype(9)", &[]).unwrap();
         assert_eq!(format!("{}", r), "<type int>");
     }
+
+    #[test]
+    fn if_true() {
+        let r = execute("if False:\n  x = 5\nelse:\n  x = 10\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "5");
+    }
 }

@@ -83,6 +83,37 @@ impl Compiler {
                 self.compile_expr(&e.value, code)?;
                 Ok(())
             }
+            ast::Stmt::If(if_stmt) => {
+                self.compile_expr(&if_stmt.test, code)?;
+                let else_jump = code.instructions.len();
+                code.instructions.push(Op::JumpIfFalse(0));
+
+                for stmt in &if_stmt.body {
+                    self.compile_stmt(stmt, code)?;
+                }
+
+                let end_jump = if !if_stmt.elif_else_clauses.is_empty() {
+                    let jump_idx = code.instructions.len();
+                    code.instructions.push(Op::Jump(0));
+                    Some(jump_idx)
+                } else {
+                    None
+                };
+
+                code.instructions[else_jump] = Op::JumpIfFalse(code.instructions.len());
+
+                for elif in &if_stmt.elif_else_clauses {
+                    for stmt in elif.body.iter() {
+                        self.compile_stmt(&stmt, code)?;
+                    }
+                }
+
+                if let Some(jump_idx) = end_jump {
+                    code.instructions[jump_idx] = Op::Jump(code.instructions.len());
+                }
+
+                Ok(())
+            }
             ast::Stmt::FunctionDef(fd) => {
                 let mut fcode = CodeObject::default();
                 let mut arg_names = Vec::new();
