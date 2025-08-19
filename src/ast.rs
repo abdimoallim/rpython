@@ -71,12 +71,20 @@ impl Compiler {
 
                 self.compile_expr(&a.value, code)?;
 
-                if let ast::Expr::Name(n) = &a.targets[0] {
-                    let idx = self.name_index(code, n.id.as_str());
-                    code.instructions.push(Op::StoreName(idx));
-                    Ok(())
-                } else {
-                    Err("unsupported assignment target".to_string())
+                match &a.targets[0] {
+                    ast::Expr::Name(n) => {
+                        let idx = self.name_index(code, n.id.as_str());
+                        code.instructions.push(Op::StoreName(idx));
+                        Ok(())
+                    }
+                    ast::Expr::Subscript(sub) => {
+                        self.compile_expr(&sub.value, code)?;
+                        self.compile_expr(&sub.slice, code)?;
+                        self.compile_expr(&a.value, code)?;
+                        code.instructions.push(Op::StoreIndex);
+                        Ok(())
+                    }
+                    _ => Err("unsupported assignment target".to_string()),
                 }
             }
             ast::Stmt::Expr(e) => {

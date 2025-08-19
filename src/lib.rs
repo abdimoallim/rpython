@@ -139,4 +139,34 @@ mod tests {
         let r = execute("{'a': 1, 'b': 2}", &[]).unwrap();
         assert_eq!(format!("{}", r), "{'a': 1, 'b': 2}");
     }
+
+    #[test]
+    fn empty_dict() {
+        let r = execute("{}", &[]).unwrap();
+        assert_eq!(format!("{}", r), "{}");
+    }
+
+    #[test]
+    fn dict_access() {
+        let r = execute("x = {'name': 'Alice', 'age': 30}\nx['name']", &[]).unwrap();
+        assert_eq!(format!("{}", r), "Alice");
+    }
+
+    #[test]
+    fn list_assignment() {
+        let r = execute("x = [1, 2, 3]\nx[1] = 99\nx[1]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "99");
+    }
+
+    #[test]
+    fn dict_assignment() {
+        let r = execute("x = {'a': 1}\nx['b'] = 2\nx['b']", &[]).unwrap();
+        assert_eq!(format!("{}", r), "2");
+    }
+
+    #[test]
+    fn nested_structures() {
+        let r = execute("x = [{'a': 1}, {'b': 2}]\nx[0]['a']", &[]).unwrap();
+        assert_eq!(format!("{}", r), "1");
+    }
 }

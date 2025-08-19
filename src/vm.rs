@@ -491,7 +491,7 @@ impl Vm {
                         .pop()
                         .ok_or_else(|| "stack underflow".to_string())?;
 
-                    match (obj, index) {
+                    match (&obj, index) {
                         (PyObject::List(l), PyObject::Int(i)) => {
                             let mut list = l.borrow_mut();
                             let idx = if i < 0 { list.len() as i64 + i } else { i } as usize;
