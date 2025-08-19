@@ -10,6 +10,10 @@ pub enum Op {
     Pop,
     Return,
     Call(usize),
+    BuildList(usize),
+    BuildDict(usize),
+    LoadIndex,
+    StoreIndex,
     Def {
         name: usize,
         arity: usize,
@@ -41,6 +45,10 @@ impl Display for Op {
             Op::Pop => write!(f, "Pop"),
             Op::Return => write!(f, "Return"),
             Op::Call(argc) => write!(f, "Call({})", argc),
+            Op::BuildList(count) => write!(f, "BuildList({})", count),
+            Op::BuildDict(count) => write!(f, "BuildDict({})", count),
+            Op::LoadIndex => write!(f, "LoadIndex"),
+            Op::StoreIndex => write!(f, "StoreIndex"),
             Op::Def {
                 name,
                 arity,

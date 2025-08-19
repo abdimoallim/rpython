@@ -1,6 +1,7 @@
 use crate::bytecode::*;
 use crate::object::*;
 use crate::opcode::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -62,6 +63,12 @@ impl Vm {
                         },
                         PyObject::Str(_) => PyType {
                             name: "str".to_string(),
+                        },
+                        PyObject::List(_) => PyType {
+                            name: "list".to_string(),
+                        },
+                        PyObject::Dict(_) => PyType {
+                            name: "dict".to_string(),
                         },
                         PyObject::None => PyType {
                             name: "NoneType".to_string(),
@@ -401,6 +408,109 @@ impl Vm {
                         ip += 1;
                     }
                 }
+                Op::BuildList(count) => {
+                    let mut items = Vec::with_capacity(count);
+
+                    for _ in 0..count {
+                        items.push(
+                            self.stack
+                                .pop()
+                                .ok_or_else(|| "stack underflow".to_string())?,
+                        );
+                    }
+
+                    items.reverse();
+                    self.stack
+                        .push(PyObject::List(Rc::new(RefCell::new(items))));
+                    ip += 1;
+                }
+                Op::BuildDict(count) => {
+                    let mut dict = HashMap::new();
+
+                    for _ in 0..count {
+                        let value = self
+                            .stack
+                            .pop()
+                            .ok_or_else(|| "stack underflow".to_string())?;
+                        let key = self
+                            .stack
+                            .pop()
+                            .ok_or_else(|| "stack underflow".to_string())?;
+                        if let PyObject::Str(k) = key {
+                            dict.insert(k, value);
+                        } else {
+                            return Err("TypeError: dict keys must be strings".to_string());
+                        }
+                    }
+
+                    self.stack.push(PyObject::Dict(Rc::new(RefCell::new(dict))));
+                    ip += 1;
+                }
+                Op::LoadIndex => {
+                    let index = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    match (obj, index) {
+                        (PyObject::List(l), PyObject::Int(i)) => {
+                            let list = l.borrow();
+                            let idx = if i < 0 { list.len() as i64 + i } else { i } as usize;
+                            if idx < list.len() {
+                                self.stack.push(list[idx].clone());
+                            } else {
+                                return Err("IndexError: list index out of range".to_string());
+                            }
+                        }
+                        (PyObject::Dict(d), PyObject::Str(k)) => {
+                            if let Some(v) = d.borrow().get(&k) {
+                                self.stack.push(v.clone());
+                            } else {
+                                return Err(format!("KeyError: '{}'", k));
+                            }
+                        }
+                        _ => return Err("TypeError: invalid indexing operation".to_string()),
+                    }
+
+                    ip += 1;
+                }
+                Op::StoreIndex => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    let index = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match (obj, index) {
+                        (PyObject::List(l), PyObject::Int(i)) => {
+                            let mut list = l.borrow_mut();
+                            let idx = if i < 0 { list.len() as i64 + i } else { i } as usize;
+                            if idx < list.len() {
+                                list[idx] = value;
+                            } else {
+                                return Err(
+                                    "IndexError: list assignment index out of range".to_string()
+                                );
+                            }
+                        }
+                        (PyObject::Dict(d), PyObject::Str(k)) => {
+                            d.borrow_mut().insert(k, value);
+                        }
+                        _ => return Err("TypeError: invalid indexing assignment".to_string()),
+                    }
+
+                    ip += 1;
+                }
             }
         }
     }
@@ -413,6 +523,8 @@ fn is_falsey(v: &PyObject) -> bool {
         PyObject::Int(i) => *i == 0,
         PyObject::Float(x) => *x == 0.0,
         PyObject::Str(s) => s.is_empty(),
+        PyObject::List(l) => l.borrow().is_empty(),
+        PyObject::Dict(d) => d.borrow().is_empty(),
         _ => false,
     }
 }

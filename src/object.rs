@@ -1,5 +1,7 @@
 use crate::bytecode::*;
 use crate::vm::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
@@ -9,6 +11,8 @@ pub enum PyObject {
     Float(f64),
     Bool(bool),
     Str(String),
+    List(Rc<RefCell<Vec<PyObject>>>),
+    Dict(Rc<RefCell<HashMap<String, PyObject>>>),
     None,
     Function(Rc<PyFunction>),
     NativeFunction(Rc<PyNativeFunction>),
@@ -35,6 +39,18 @@ impl Display for PyObject {
             PyObject::Float(v) => write!(f, "{v}"),
             PyObject::Bool(v) => write!(f, "{v}"),
             PyObject::Str(v) => write!(f, "{}", v),
+            PyObject::List(l) => {
+                let items: Vec<String> = l.borrow().iter().map(|x| format!("{}", x)).collect();
+                write!(f, "[{}]", items.join(", "))
+            }
+            PyObject::Dict(d) => {
+                let items: Vec<String> = d
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| format!("'{}': {}", k, v))
+                    .collect();
+                write!(f, "{{{}}}", items.join(", "))
+            }
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "<function {}>", func.name),
             PyObject::NativeFunction(func) => write!(f, "<native function {}>", func.name),
@@ -50,6 +66,8 @@ impl fmt::Debug for PyObject {
             PyObject::Float(v) => write!(f, "Float({})", v),
             PyObject::Bool(v) => write!(f, "Bool({})", v),
             PyObject::Str(v) => write!(f, "Str({:?})", v),
+            PyObject::List(l) => write!(f, "List({:?})", l.borrow().as_slice()),
+            PyObject::Dict(d) => write!(f, "Dict({:?})", d.borrow()),
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "Function({})", func.name),
             PyObject::NativeFunction(func) => write!(f, "NativeFunction({})", func.name),

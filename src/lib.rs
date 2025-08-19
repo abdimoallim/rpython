@@ -107,4 +107,36 @@ mod tests {
         let r = execute(include_str!("../test/if_nested.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "2");
     }
+
+    #[test]
+    fn list_creation() {
+        let r = execute("[1, 2, 3]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn empty_list() {
+        let r = execute("[]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "[]");
+    }
+
+    #[test]
+    fn list_indexing() {
+        let r = execute("x = [10, 20, 30]\nx[1]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "20");
+    }
+
+    #[test]
+    fn list_negative_index() {
+        let r = execute("x = [1, 2, 3]\nx[-1]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    // @todo: revisit ordering
+
+    #[test]
+    fn dict_creation() {
+        let r = execute("{'a': 1, 'b': 2}", &[]).unwrap();
+        assert_eq!(format!("{}", r), "{'a': 1, 'b': 2}");
+    }
 }

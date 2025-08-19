@@ -194,6 +194,33 @@ impl Compiler {
                 code.instructions.push(Op::LoadName(idx));
                 Ok(())
             }
+            ast::Expr::List(list) => {
+                for elt in &list.elts {
+                    self.compile_expr(elt, code)?;
+                }
+
+                code.instructions.push(Op::BuildList(list.elts.len()));
+                Ok(())
+            }
+            ast::Expr::Dict(dict) => {
+                for item in &dict.items {
+                    if let Some(key) = &item.key {
+                        self.compile_expr(key, code)?;
+                        self.compile_expr(&item.value, code)?;
+                    } else {
+                        return Err("unsupported dict unpacking".to_string());
+                    }
+                }
+
+                code.instructions.push(Op::BuildDict(dict.items.len()));
+                Ok(())
+            }
+            ast::Expr::Subscript(sub) => {
+                self.compile_expr(&sub.value, code)?;
+                self.compile_expr(&sub.slice, code)?;
+                code.instructions.push(Op::LoadIndex);
+                Ok(())
+            }
             ast::Expr::BinOp(b) => {
                 self.compile_expr(&b.left, code)?;
                 self.compile_expr(&b.right, code)?;
