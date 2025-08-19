@@ -1,7 +1,7 @@
 use crate::bytecode::*;
 use crate::vm::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
@@ -13,6 +13,8 @@ pub enum PyObject {
     Str(String),
     List(Rc<RefCell<Vec<PyObject>>>),
     Dict(Rc<RefCell<HashMap<String, PyObject>>>),
+    Tuple(Vec<PyObject>),
+    Set(Rc<RefCell<HashSet<PyObject>>>),
     None,
     Function(Rc<PyFunction>),
     NativeFunction(Rc<PyNativeFunction>),
@@ -51,6 +53,18 @@ impl Display for PyObject {
                     .collect();
                 write!(f, "{{{}}}", items.join(", "))
             }
+            PyObject::Tuple(t) => {
+                let items: Vec<String> = t.iter().map(|x| format!("{}", x)).collect();
+                if t.len() == 1 {
+                    write!(f, "({},)", items[0])
+                } else {
+                    write!(f, "({})", items.join(", "))
+                }
+            }
+            PyObject::Set(s) => {
+                let items: Vec<String> = s.borrow().iter().map(|x| format!("{}", x)).collect();
+                write!(f, "{{{}}}", items.join(", "))
+            }
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "<function {}>", func.name),
             PyObject::NativeFunction(func) => write!(f, "<native function {}>", func.name),
@@ -68,6 +82,8 @@ impl fmt::Debug for PyObject {
             PyObject::Str(v) => write!(f, "Str({:?})", v),
             PyObject::List(l) => write!(f, "List({:?})", l.borrow().as_slice()),
             PyObject::Dict(d) => write!(f, "Dict({:?})", d.borrow()),
+            PyObject::Tuple(t) => write!(f, "Tuple({:?})", t),
+            PyObject::Set(s) => write!(f, "Set({:?})", s.borrow()),
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "Function({})", func.name),
             PyObject::NativeFunction(func) => write!(f, "NativeFunction({})", func.name),
@@ -105,6 +121,21 @@ impl From<&str> for PyObject {
         PyObject::Str(v.to_string())
     }
 }
+
+impl std::hash::Hash for PyObject {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            PyObject::Int(v) => v.hash(state),
+            PyObject::Float(v) => v.to_bits().hash(state),
+            PyObject::Bool(v) => v.hash(state),
+            PyObject::Str(v) => v.hash(state),
+            PyObject::None => 0.hash(state),
+            _ => panic!("unhashable type"),
+        }
+    }
+}
+
+impl Eq for PyObject {}
 
 #[derive(Clone)]
 pub struct PyNativeFunction {

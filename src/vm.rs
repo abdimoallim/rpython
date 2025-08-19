@@ -70,6 +70,12 @@ impl Vm {
                         PyObject::Dict(_) => PyType {
                             name: "dict".to_string(),
                         },
+                        PyObject::Tuple(_) => PyType {
+                            name: "tuple".to_string(),
+                        },
+                        PyObject::Set(_) => PyType {
+                            name: "set".to_string(),
+                        },
                         PyObject::None => PyType {
                             name: "NoneType".to_string(),
                         },
@@ -472,6 +478,14 @@ impl Vm {
                                 return Err(format!("KeyError: '{}'", k));
                             }
                         }
+                        (PyObject::Tuple(t), PyObject::Int(i)) => {
+                            let idx = if i < 0 { t.len() as i64 + i } else { i } as usize;
+                            if idx < t.len() {
+                                self.stack.push(t[idx].clone());
+                            } else {
+                                return Err("IndexError: tuple index out of range".to_string());
+                            }
+                        }
                         _ => return Err("TypeError: invalid indexing operation".to_string()),
                     }
 
@@ -511,6 +525,35 @@ impl Vm {
 
                     ip += 1;
                 }
+                Op::BuildTuple(count) => {
+                    let mut items = Vec::with_capacity(count);
+
+                    for _ in 0..count {
+                        items.push(
+                            self.stack
+                                .pop()
+                                .ok_or_else(|| "stack underflow".to_string())?,
+                        );
+                    }
+
+                    items.reverse();
+                    self.stack.push(PyObject::Tuple(items));
+                    ip += 1;
+                }
+                Op::BuildSet(count) => {
+                    let mut set = std::collections::HashSet::new();
+
+                    for _ in 0..count {
+                        let item = self
+                            .stack
+                            .pop()
+                            .ok_or_else(|| "stack underflow".to_string())?;
+                        set.insert(item);
+                    }
+
+                    self.stack.push(PyObject::Set(Rc::new(RefCell::new(set))));
+                    ip += 1;
+                }
             }
         }
     }
@@ -525,6 +568,8 @@ fn is_falsey(v: &PyObject) -> bool {
         PyObject::Str(s) => s.is_empty(),
         PyObject::List(l) => l.borrow().is_empty(),
         PyObject::Dict(d) => d.borrow().is_empty(),
+        PyObject::Tuple(t) => t.is_empty(),
+        PyObject::Set(s) => s.borrow().is_empty(),
         _ => false,
     }
 }

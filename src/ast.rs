@@ -223,6 +223,22 @@ impl Compiler {
                 code.instructions.push(Op::BuildDict(dict.items.len()));
                 Ok(())
             }
+            ast::Expr::Tuple(tuple) => {
+                for elt in &tuple.elts {
+                    self.compile_expr(elt, code)?;
+                }
+
+                code.instructions.push(Op::BuildTuple(tuple.elts.len()));
+                Ok(())
+            }
+            ast::Expr::Set(set) => {
+                for elt in &set.elts {
+                    self.compile_expr(elt, code)?;
+                }
+
+                code.instructions.push(Op::BuildSet(set.elts.len()));
+                Ok(())
+            }
             ast::Expr::Subscript(sub) => {
                 self.compile_expr(&sub.value, code)?;
                 self.compile_expr(&sub.slice, code)?;

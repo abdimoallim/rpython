@@ -169,4 +169,16 @@ mod tests {
         let r = execute("x = [{'a': 1}, {'b': 2}]\nx[0]['a']", &[]).unwrap();
         assert_eq!(format!("{}", r), "1");
     }
+
+    #[test]
+    fn tuple_creation() {
+        let r = execute("(1, 2, 3)", &[]).unwrap();
+        assert_eq!(format!("{}", r), "(1, 2, 3)");
+    }
+
+    #[test]
+    fn empty_tuple() {
+        let r = execute("()", &[]).unwrap();
+        assert_eq!(format!("{}", r), "()");
+    }
 }
