@@ -41,6 +41,8 @@ pub enum Op {
     PopBlock,
     Break,
     Continue,
+    ForIter(usize),
+    GetIter,
 }
 
 impl Display for Op {
@@ -88,6 +90,8 @@ impl Display for Op {
             Op::PopBlock => write!(f, "PopBlock"),
             Op::Break => write!(f, "Break"),
             Op::Continue => write!(f, "Continue"),
+            Op::GetIter => write!(f, "GetIter"),
+            Op::ForIter(exit) => write!(f, "ForIter({})", exit),
         }
     }
 }

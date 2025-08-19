@@ -283,4 +283,90 @@ mod tests {
         .unwrap();
         assert_eq!(format!("{}", r), "10");
     }
+
+    #[test]
+    fn for_loop_range() {
+        let r = execute("sum = 0\nfor i in range(3):\n  sum = sum + i\nsum", &[]).unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn for_loop_range_start_stop() {
+        let r = execute("sum = 0\nfor i in range(2, 5):\n  sum = sum + i\nsum", &[]).unwrap();
+        assert_eq!(format!("{}", r), "9");
+    }
+
+    #[test]
+    fn for_loop_range_step() {
+        let r = execute(
+            "sum = 0\nfor i in range(1, 8, 2):\n  sum = sum + i\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "16");
+    }
+
+    #[test]
+    fn for_loop_list() {
+        let r = execute("sum = 0\nfor x in [1, 2, 3]:\n  sum = sum + x\nsum", &[]).unwrap();
+        assert_eq!(format!("{}", r), "6");
+    }
+
+    #[test]
+    fn for_loop_tuple() {
+        let r = execute("sum = 0\nfor x in (10, 20, 30):\n  sum = sum + x\nsum", &[]).unwrap();
+        assert_eq!(format!("{}", r), "60");
+    }
+
+    #[test]
+    fn for_loop_empty() {
+        let r = execute("x = 5\nfor i in []:\n  x = 10\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "5");
+    }
+
+    #[test]
+    fn for_loop_ident() {
+        let r = execute("x = 5\ny=[10,20,30]\nfor i in y:\n  x = x + i\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "65");
+    }
+
+    #[test]
+    fn for_loop_nested() {
+        let r = execute(
+            "sum = 0\nfor i in range(2):\n  for j in range(2):\n    sum = sum + 1\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "4");
+    }
+
+    #[test]
+    fn for_loop_with_break() {
+        let r = execute(
+            "sum = 0\nfor i in range(10):\n  if i == 3:\n    break\n  sum = sum + i\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn for_loop_with_continue() {
+        let r = execute(
+            "sum = 0\nfor i in range(5):\n  if i == 2:\n    continue\n  sum = sum + i\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "8");
+    }
+
+    #[test]
+    fn range_negative_step() {
+        let r = execute(
+            "sum = 0\nfor i in range(5, 0, -1):\n  sum = sum + i\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "15");
+    }
 }

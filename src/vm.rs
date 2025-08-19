@@ -17,6 +17,7 @@ pub struct Vm {
     pub stack: Vec<PyObject>,
     pub env: Env,
     pub loop_stack: Vec<(usize, usize)>,
+    pub iter_stack: Vec<(usize, PyObject)>,
 }
 
 impl Vm {
@@ -27,6 +28,75 @@ impl Vm {
                 name: "set".to_string(),
                 arity: 0,
                 func: Rc::new(|_| Ok(PyObject::Set(Rc::new(RefCell::new(HashSet::new()))))),
+            })),
+        );
+
+        self.env.builtins.insert(
+            "range".to_string(),
+            PyObject::NativeFunction(Rc::new(PyNativeFunction {
+                name: "range".to_string(),
+                arity: usize::MAX,
+                func: Rc::new(|args| {
+                    let (start, stop, step) = match args.len() {
+                        1 => {
+                            if let PyObject::Int(stop) = &args[0] {
+                                (0, *stop, 1)
+                            } else {
+                                return Err(
+                                    "TypeError: range() argument must be an integer".to_string()
+                                );
+                            }
+                        }
+                        2 => {
+                            if let (PyObject::Int(start), PyObject::Int(stop)) =
+                                (&args[0], &args[1])
+                            {
+                                (*start, *stop, 1)
+                            } else {
+                                return Err(
+                                    "TypeError: range() arguments must be integers".to_string()
+                                );
+                            }
+                        }
+                        3 => {
+                            if let (
+                                PyObject::Int(start),
+                                PyObject::Int(stop),
+                                PyObject::Int(step),
+                            ) = (&args[0], &args[1], &args[2])
+                            {
+                                if *step == 0 {
+                                    return Err(
+                                        "ValueError: range() arg 3 must not be zero".to_string()
+                                    );
+                                }
+                                (*start, *stop, *step)
+                            } else {
+                                return Err(
+                                    "TypeError: range() arguments must be integers".to_string()
+                                );
+                            }
+                        }
+                        _ => return Err("TypeError: range expected 1 to 3 arguments".to_string()),
+                    };
+
+                    let mut items = Vec::new();
+                    if step > 0 {
+                        let mut i = start;
+                        while i < stop {
+                            items.push(PyObject::Int(i));
+                            i += step;
+                        }
+                    } else {
+                        let mut i = start;
+                        while i > stop {
+                            items.push(PyObject::Int(i));
+                            i += step;
+                        }
+                    }
+
+                    Ok(PyObject::List(Rc::new(RefCell::new(items))))
+                }),
             })),
         );
 
@@ -480,6 +550,58 @@ impl Vm {
                         ip = *continue_addr;
                     } else {
                         return Err("SyntaxError: 'continue' not properly in loop".to_string());
+                    }
+                }
+                Op::GetIter => {
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    match obj {
+                        PyObject::List(l) => {
+                            self.iter_stack.push((0, PyObject::List(l.clone())));
+                            ip += 1;
+                        }
+                        PyObject::Tuple(t) => {
+                            self.iter_stack.push((0, PyObject::Tuple(t.clone())));
+                            ip += 1;
+                        }
+                        _ => return Err("TypeError: object is not iterable".to_string()),
+                    }
+                }
+                Op::ForIter(exit_addr) => {
+                    if let Some((index, iter_obj)) = self.iter_stack.last_mut() {
+                        let has_next = match iter_obj {
+                            PyObject::List(l) => {
+                                let list = l.borrow();
+                                if *index < list.len() {
+                                    self.stack.push(list[*index].clone());
+                                    *index += 1;
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            PyObject::Tuple(t) => {
+                                if *index < t.len() {
+                                    self.stack.push(t[*index].clone());
+                                    *index += 1;
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            _ => false,
+                        };
+
+                        if has_next {
+                            ip += 1;
+                        } else {
+                            self.iter_stack.pop();
+                            ip = exit_addr;
+                        }
+                    } else {
+                        return Err("RuntimeError: no iterator on stack".to_string());
                     }
                 }
                 Op::BuildList(count) => {

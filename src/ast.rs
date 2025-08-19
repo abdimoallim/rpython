@@ -152,6 +152,37 @@ impl Compiler {
                 code.instructions.push(Op::Continue);
                 Ok(())
             }
+            ast::Stmt::For(for_stmt) => {
+                if let ast::Expr::Name(target) = &*for_stmt.target {
+                    self.compile_expr(&for_stmt.iter, code)?;
+                    code.instructions.push(Op::GetIter);
+
+                    let loop_start = code.instructions.len();
+                    code.instructions.push(Op::SetupLoop(0));
+
+                    let for_iter_pos = code.instructions.len();
+                    code.instructions.push(Op::ForIter(0));
+
+                    let target_idx = self.name_index(code, target.id.as_str());
+                    code.instructions.push(Op::StoreName(target_idx));
+
+                    for stmt in &for_stmt.body {
+                        self.compile_stmt(stmt, code)?;
+                    }
+
+                    code.instructions.push(Op::Jump(for_iter_pos));
+
+                    let loop_end = code.instructions.len();
+                    code.instructions.push(Op::PopBlock);
+
+                    code.instructions[loop_start] = Op::SetupLoop(loop_end);
+                    code.instructions[for_iter_pos] = Op::ForIter(loop_end);
+
+                    Ok(())
+                } else {
+                    Err("unsupported for loop target".to_string())
+                }
+            }
             ast::Stmt::FunctionDef(fd) => {
                 let mut fcode = CodeObject::default();
                 let mut arg_names = Vec::new();
