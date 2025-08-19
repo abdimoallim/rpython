@@ -16,6 +16,7 @@ pub struct Env {
 pub struct Vm {
     pub stack: Vec<PyObject>,
     pub env: Env,
+    pub loop_stack: Vec<(usize, usize)>,
 }
 
 impl Vm {
@@ -457,6 +458,28 @@ impl Vm {
                         ip = target;
                     } else {
                         ip += 1;
+                    }
+                }
+                Op::SetupLoop(exit_addr) => {
+                    self.loop_stack.push((ip + 1, exit_addr));
+                    ip += 1;
+                }
+                Op::PopBlock => {
+                    self.loop_stack.pop();
+                    ip += 1;
+                }
+                Op::Break => {
+                    if let Some((_, exit_addr)) = self.loop_stack.pop() {
+                        ip = exit_addr;
+                    } else {
+                        return Err("SyntaxError: 'break' outside loop".to_string());
+                    }
+                }
+                Op::Continue => {
+                    if let Some((continue_addr, _)) = self.loop_stack.last() {
+                        ip = *continue_addr;
+                    } else {
+                        return Err("SyntaxError: 'continue' not properly in loop".to_string());
                     }
                 }
                 Op::BuildList(count) => {

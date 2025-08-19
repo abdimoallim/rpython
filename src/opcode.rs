@@ -37,6 +37,10 @@ pub enum Op {
     Jump(usize),
     JumpIfFalse(usize),
     JumpIfTrue(usize),
+    SetupLoop(usize),
+    PopBlock,
+    Break,
+    Continue,
 }
 
 impl Display for Op {
@@ -80,6 +84,10 @@ impl Display for Op {
             Op::Jump(target) => write!(f, "Jump({})", target),
             Op::JumpIfTrue(target) => write!(f, "JumpIfTrue({})", target),
             Op::JumpIfFalse(target) => write!(f, "JumpIfFalse({})", target),
+            Op::SetupLoop(exit) => write!(f, "SetupLoop({})", exit),
+            Op::PopBlock => write!(f, "PopBlock"),
+            Op::Break => write!(f, "Break"),
+            Op::Continue => write!(f, "Continue"),
         }
     }
 }

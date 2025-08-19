@@ -235,4 +235,52 @@ mod tests {
         let r = execute("(1, 'hello', [2, 3])", &[]).unwrap();
         assert_eq!(format!("{}", r), "(1, hello, [2, 3])");
     }
+
+    #[test]
+    fn while_loop() {
+        let r = execute("x = 0\nwhile x < 3:\n  x = x + 1\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn while_false() {
+        let r = execute("x = 5\nwhile False:\n  x = 10\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "5");
+    }
+
+    #[test]
+    fn while_with_break() {
+        let r = execute(
+            "x = 0\nwhile True:\n  x = x + 1\n  if x == 3:\n    break\nx",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn while_with_continue() {
+        let r = execute(
+            "x = 0\ny = 0\nwhile x < 5:\n  x = x + 1\n  if x == 3:\n    continue\n  y = y + 1\ny",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "4");
+    }
+
+    #[test]
+    fn nested_while() {
+        let r = execute("x = 0\ny = 0\nwhile x < 2:\n  x = x + 1\n  z = 0\n  while z < 2:\n    z = z + 1\n    y = y + 1\ny", &[]).unwrap();
+        assert_eq!(format!("{}", r), "4");
+    }
+
+    #[test]
+    fn while_accumulator() {
+        let r = execute(
+            "i = 1\nsum = 0\nwhile i <= 4:\n  sum = sum + i\n  i = i + 1\nsum",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "10");
+    }
 }

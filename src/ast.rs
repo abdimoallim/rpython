@@ -122,6 +122,36 @@ impl Compiler {
 
                 Ok(())
             }
+            ast::Stmt::While(while_stmt) => {
+                let loop_start = code.instructions.len();
+                code.instructions.push(Op::SetupLoop(0));
+
+                let test_start = code.instructions.len();
+                self.compile_expr(&while_stmt.test, code)?;
+                let exit_jump = code.instructions.len();
+                code.instructions.push(Op::JumpIfFalse(0));
+
+                for stmt in &while_stmt.body {
+                    self.compile_stmt(stmt, code)?;
+                }
+
+                code.instructions.push(Op::Jump(test_start));
+                let loop_end = code.instructions.len();
+                code.instructions.push(Op::PopBlock);
+
+                code.instructions[loop_start] = Op::SetupLoop(loop_end);
+                code.instructions[exit_jump] = Op::JumpIfFalse(loop_end);
+
+                Ok(())
+            }
+            ast::Stmt::Break(_) => {
+                code.instructions.push(Op::Break);
+                Ok(())
+            }
+            ast::Stmt::Continue(_) => {
+                code.instructions.push(Op::Continue);
+                Ok(())
+            }
             ast::Stmt::FunctionDef(fd) => {
                 let mut fcode = CodeObject::default();
                 let mut arg_names = Vec::new();
