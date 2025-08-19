@@ -49,13 +49,13 @@ mod tests {
 
     #[test]
     fn basic_arith() {
-        let r = execute("x=1+2\nx", &[]).unwrap();
+        let r = execute(include_str!("../test/arith.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "3");
     }
 
     #[test]
     fn function_call() {
-        let r = execute("def add(a,b):\n  return a+b\nadd(2,3)", &[]).unwrap();
+        let r = execute(include_str!("../test/call.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "5");
     }
 
@@ -74,41 +74,37 @@ mod tests {
 
     #[test]
     fn builtins() {
-        let r = execute("print(9)\ntype(9)", &[]).unwrap();
+        let r = execute(include_str!("../test/builtin.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "<type int>");
     }
 
     #[test]
     fn if_true() {
-        let r = execute("if False:\n  x = 5\nelse:\n  x = 10\nx", &[]).unwrap();
+        let r = execute(include_str!("../test/if_true.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "5");
     }
 
     #[test]
     fn if_false() {
-        let r = execute("if False:\n  x = 5\nelse:\n  x = 10\nx", &[]).unwrap();
+        let r = execute(include_str!("../test/if_false.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "10");
     }
 
     #[test]
     fn if_no_else() {
-        let r = execute("x = 1\nif True:\n  x = 2\nx", &[]).unwrap();
+        let r = execute(include_str!("../test/if_no_else.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "2");
     }
 
     #[test]
     fn if_condition() {
-        let r = execute("x = 5\nif x > 3:\n  y = 100\nelse:\n  y = 200\ny", &[]).unwrap();
+        let r = execute(include_str!("../test/if_cond.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "100");
     }
 
     #[test]
     fn nested_if() {
-        let r = execute(
-            "x = 5\nif x > 0:\n  if x > 10:\n    y = 1\n  else:\n    y = 2\nelse:\n  y = 3\ny",
-            &[],
-        )
-        .unwrap();
+        let r = execute(include_str!("../test/if_nested.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "2");
     }
 }
