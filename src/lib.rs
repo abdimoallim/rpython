@@ -83,4 +83,32 @@ mod tests {
         let r = execute("if False:\n  x = 5\nelse:\n  x = 10\nx", &[]).unwrap();
         assert_eq!(format!("{}", r), "5");
     }
+
+    #[test]
+    fn if_false() {
+        let r = execute("if False:\n  x = 5\nelse:\n  x = 10\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "10");
+    }
+
+    #[test]
+    fn if_no_else() {
+        let r = execute("x = 1\nif True:\n  x = 2\nx", &[]).unwrap();
+        assert_eq!(format!("{}", r), "2");
+    }
+
+    #[test]
+    fn if_condition() {
+        let r = execute("x = 5\nif x > 3:\n  y = 100\nelse:\n  y = 200\ny", &[]).unwrap();
+        assert_eq!(format!("{}", r), "100");
+    }
+
+    #[test]
+    fn nested_if() {
+        let r = execute(
+            "x = 5\nif x > 0:\n  if x > 10:\n    y = 1\n  else:\n    y = 2\nelse:\n  y = 3\ny",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(format!("{}", r), "2");
+    }
 }
