@@ -181,4 +181,58 @@ mod tests {
         let r = execute("()", &[]).unwrap();
         assert_eq!(format!("{}", r), "()");
     }
+
+    #[test]
+    fn single_tuple() {
+        let r = execute("(7,)", &[]).unwrap();
+        assert_eq!(format!("{}", r), "(7,)");
+    }
+
+    #[test]
+    fn tuple_indexing() {
+        let r = execute("x = (10, 20, 30)\nx[1]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "20");
+    }
+
+    // @fix: unary/negative integers
+
+    #[test]
+    fn tuple_negative_index() {
+        let r = execute("x = (1, 2, 3)\nx[-1]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn set_creation() {
+        let r = execute("{1, 2, 3}", &[]).unwrap();
+        let result = format!("{}", r);
+        assert!(result.contains("1") && result.contains("2") && result.contains("3"));
+    }
+
+    // @todo: should probably be a set class
+
+    #[test]
+    fn empty_set() {
+        let r = execute("set()", &[]).unwrap();
+        assert_eq!(format!("{}", r), "{}");
+    }
+
+    #[test]
+    fn set_deduplication() {
+        let r = execute("{1, 2, 2, 3, 1}", &[]).unwrap();
+        let result = format!("{}", r);
+        assert!(result.len() < 15);
+    }
+
+    #[test]
+    fn nested_tuple_list() {
+        let r = execute("x = ([1, 2], (3, 4))\nx[1][0]", &[]).unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
+
+    #[test]
+    fn mixed_types() {
+        let r = execute("(1, 'hello', [2, 3])", &[]).unwrap();
+        assert_eq!(format!("{}", r), "(1, hello, [2, 3])");
+    }
 }

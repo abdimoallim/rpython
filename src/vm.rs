@@ -2,7 +2,7 @@ use crate::bytecode::*;
 use crate::object::*;
 use crate::opcode::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 #[derive(Clone, Default, PartialEq)]
@@ -20,6 +20,15 @@ pub struct Vm {
 
 impl Vm {
     pub fn with_builtins(mut self) -> Self {
+        self.env.builtins.insert(
+            "set".to_string(),
+            PyObject::NativeFunction(Rc::new(PyNativeFunction {
+                name: "set".to_string(),
+                arity: 0,
+                func: Rc::new(|_| Ok(PyObject::Set(Rc::new(RefCell::new(HashSet::new()))))),
+            })),
+        );
+
         self.env.builtins.insert(
             "print".to_string(),
             PyObject::NativeFunction(Rc::new(PyNativeFunction {
