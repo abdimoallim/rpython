@@ -1,8 +1,15 @@
 use crate::bytecode::*;
-use crate::env::*;
 use crate::object::*;
 use crate::opcode::*;
+use std::collections::HashMap;
 use std::rc::Rc;
+
+#[derive(Clone, Default, PartialEq)]
+pub struct Env {
+    pub locals: HashMap<String, PyObject>,
+    pub globals: HashMap<String, PyObject>,
+    pub builtins: HashMap<String, PyObject>,
+}
 
 #[derive(Default)]
 pub struct Vm {

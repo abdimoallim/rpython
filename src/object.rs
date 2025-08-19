@@ -1,5 +1,5 @@
 use crate::bytecode::*;
-use crate::env::*;
+use crate::vm::*;
 use std::fmt::{self, Display};
 use std::rc::Rc;
 

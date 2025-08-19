@@ -1,6 +1,5 @@
 mod ast;
 mod bytecode;
-mod env;
 mod object;
 mod opcode;
 mod vm;
