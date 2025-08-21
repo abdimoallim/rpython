@@ -167,6 +167,12 @@ impl Vm {
                         PyObject::NativeFunction(_) => PyType {
                             name: "native_function".to_string(),
                         },
+                        PyObject::NativeModule(_) => PyType {
+                            name: "module".to_string(),
+                        },
+                        PyObject::NativeClass(_) => PyType {
+                            name: "type".to_string(),
+                        },
                         PyObject::Type(_) => PyType {
                             name: "type".to_string(),
                         },
@@ -187,6 +193,44 @@ impl Vm {
         );
 
         self
+    }
+
+    pub fn register_native_module(&mut self, name: &str, dict: HashMap<String, PyObject>) {
+        let module = PyNativeModule {
+            name: name.to_string(),
+            dict,
+        };
+        self.modules
+            .insert(name.to_string(), PyObject::NativeModule(Rc::new(module)));
+    }
+
+    pub fn register_native_class<F>(
+        &mut self,
+        name: &str,
+        constructor: F,
+        methods: HashMap<String, PyObject>,
+    ) where
+        F: Fn(&[PyObject]) -> Result<PyObject, String> + 'static,
+    {
+        let class = PyNativeClass {
+            name: name.to_string(),
+            methods,
+            constructor: Rc::new(constructor),
+        };
+
+        let class_constructor = PyNativeFunction {
+            name: name.to_string(),
+            arity: usize::MAX,
+            func: {
+                let class_rc = Rc::new(class);
+                Rc::new(move |args| (class_rc.constructor)(args))
+            },
+        };
+
+        self.env.builtins.insert(
+            name.to_string(),
+            PyObject::NativeFunction(Rc::new(class_constructor)),
+        );
     }
 
     pub fn register_native<F>(&mut self, name: &str, arity: usize, f: F)
@@ -945,6 +989,26 @@ impl Vm {
                                 ));
                             }
                         }
+                        PyObject::NativeModule(m) => {
+                            if let Some(value) = m.dict.get(attr_name) {
+                                self.stack.push(value.clone());
+                            } else {
+                                return Err(format!(
+                                    "AttributeError: module '{}' has no attribute '{}'",
+                                    m.name, attr_name
+                                ));
+                            }
+                        }
+                        PyObject::NativeClass(c) => {
+                            if let Some(method) = c.methods.get(attr_name) {
+                                self.stack.push(method.clone());
+                            } else {
+                                return Err(format!(
+                                    "AttributeError: type '{}' has no attribute '{}'",
+                                    c.name, attr_name
+                                ));
+                            }
+                        }
                         _ => return Err("AttributeError: object has no attributes".to_string()),
                     }
 
@@ -1008,21 +1072,35 @@ impl Vm {
                     let module_name = cur.names[module].clone();
                     let module_obj = self.load_module(&module_name)?;
 
-                    if let PyObject::Module(m) = module_obj {
-                        let module_dict = &m.borrow().dict;
-
-                        for name_idx in names {
-                            let name = cur.names[*name_idx].clone();
-
-                            if let Some(value) = module_dict.get(&name) {
-                                self.env.locals.insert(name.clone(), value.clone());
-                            } else {
-                                return Err(format!(
-                                    "ImportError: cannot import name '{}' from '{}'",
-                                    name, module_name
-                                ));
+                    match module_obj {
+                        PyObject::Module(m) => {
+                            let module_dict = &m.borrow().dict;
+                            for name_idx in names {
+                                let name = cur.names[*name_idx].clone();
+                                if let Some(value) = module_dict.get(&name) {
+                                    self.env.locals.insert(name.clone(), value.clone());
+                                } else {
+                                    return Err(format!(
+                                        "ImportError: cannot import name '{}' from '{}'",
+                                        name, module_name
+                                    ));
+                                }
                             }
                         }
+                        PyObject::NativeModule(m) => {
+                            for name_idx in names {
+                                let name = cur.names[*name_idx].clone();
+                                if let Some(value) = m.dict.get(&name) {
+                                    self.env.locals.insert(name.clone(), value.clone());
+                                } else {
+                                    return Err(format!(
+                                        "ImportError: cannot import name '{}' from '{}'",
+                                        name, module_name
+                                    ));
+                                }
+                            }
+                        }
+                        _ => {}
                     }
 
                     ip += 1;
@@ -1031,14 +1109,23 @@ impl Vm {
                     let module_name = cur.names[idx].clone();
                     let module_obj = self.load_module(&module_name)?;
 
-                    if let PyObject::Module(m) = module_obj {
-                        let module_dict = &m.borrow().dict;
-
-                        for (name, value) in module_dict {
-                            if !name.starts_with('_') {
-                                self.env.locals.insert(name.clone(), value.clone());
+                    match module_obj {
+                        PyObject::Module(m) => {
+                            let module_dict = &m.borrow().dict;
+                            for (name, value) in module_dict {
+                                if !name.starts_with('_') {
+                                    self.env.locals.insert(name.clone(), value.clone());
+                                }
                             }
                         }
+                        PyObject::NativeModule(m) => {
+                            for (name, value) in &m.dict {
+                                if !name.starts_with('_') {
+                                    self.env.locals.insert(name.clone(), value.clone());
+                                }
+                            }
+                        }
+                        _ => {}
                     }
 
                     ip += 1;

@@ -19,6 +19,8 @@ pub enum PyObject {
     None,
     Function(Rc<PyFunction>),
     NativeFunction(Rc<PyNativeFunction>),
+    NativeModule(Rc<PyNativeModule>),
+    NativeClass(Rc<PyNativeClass>),
     Type(PyType),
     Class(Rc<PyClass>),
     Instance(Rc<RefCell<PyInstance>>),
@@ -91,6 +93,8 @@ impl Display for PyObject {
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "<function {}>", func.name),
             PyObject::NativeFunction(func) => write!(f, "<native function {}>", func.name),
+            PyObject::NativeModule(m) => write!(f, "<module '{}'>", m.name),
+            PyObject::NativeClass(c) => write!(f, "<class '{}'>", c.name),
             PyObject::Type(t) => write!(f, "<type {}>", t.name),
             PyObject::Class(c) => write!(f, "<class '{}'>", c.name),
             PyObject::Instance(i) => write!(f, "<{} object>", i.borrow().class.name),
@@ -113,6 +117,8 @@ impl fmt::Debug for PyObject {
             PyObject::None => write!(f, "None"),
             PyObject::Function(func) => write!(f, "Function({})", func.name),
             PyObject::NativeFunction(func) => write!(f, "NativeFunction({})", func.name),
+            PyObject::NativeModule(m) => write!(f, "NativeModule({})", m.name),
+            PyObject::NativeClass(c) => write!(f, "NativeClass({})", c.name),
             PyObject::Type(t) => write!(f, "Type({})", t.name),
             PyObject::Class(c) => write!(f, "Class({})", c.name),
             PyObject::Instance(i) => write!(f, "Instance({})", i.borrow().class.name),
@@ -165,6 +171,31 @@ impl std::hash::Hash for PyObject {
 }
 
 impl Eq for PyObject {}
+
+#[derive(Clone)]
+pub struct PyNativeModule {
+    pub name: String,
+    pub dict: HashMap<String, PyObject>,
+}
+
+impl PartialEq for PyNativeModule {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+#[derive(Clone)]
+pub struct PyNativeClass {
+    pub name: String,
+    pub methods: HashMap<String, PyObject>,
+    pub constructor: Rc<dyn Fn(&[PyObject]) -> Result<PyObject, String>>,
+}
+
+impl PartialEq for PyNativeClass {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
 
 #[derive(Clone)]
 pub struct PyNativeFunction {
