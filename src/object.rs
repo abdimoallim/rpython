@@ -1,7 +1,8 @@
 use crate::bytecode::*;
 use crate::vm::*;
+use indexmap::IndexMap;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
@@ -12,7 +13,7 @@ pub enum PyObject {
     Bool(bool),
     Str(String),
     List(Rc<RefCell<Vec<PyObject>>>),
-    Dict(Rc<RefCell<HashMap<String, PyObject>>>),
+    Dict(Rc<RefCell<IndexMap<String, PyObject>>>),
     Tuple(Vec<PyObject>),
     Set(Rc<RefCell<HashSet<PyObject>>>),
     None,

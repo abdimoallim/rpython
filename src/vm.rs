@@ -1,6 +1,7 @@
 use crate::bytecode::*;
 use crate::object::*;
 use crate::opcode::*;
+use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -621,7 +622,7 @@ impl Vm {
                     ip += 1;
                 }
                 Op::BuildDict(count) => {
-                    let mut dict = HashMap::new();
+                    let mut pairs = Vec::new();
 
                     for _ in 0..count {
                         let value = self
@@ -633,10 +634,16 @@ impl Vm {
                             .pop()
                             .ok_or_else(|| "stack underflow".to_string())?;
                         if let PyObject::Str(k) = key {
-                            dict.insert(k, value);
+                            pairs.push((k, value));
                         } else {
                             return Err("TypeError: dict keys must be strings".to_string());
                         }
+                    }
+
+                    let mut dict = IndexMap::new();
+
+                    for (k, v) in pairs.into_iter().rev() {
+                        dict.insert(k, v);
                     }
 
                     self.stack.push(PyObject::Dict(Rc::new(RefCell::new(dict))));

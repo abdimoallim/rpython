@@ -80,9 +80,8 @@ mod tests {
 
     #[test]
     fn if_true() {
-        let _ = execute(include_str!("../test/if_true.py"), &[]).unwrap();
-        // @todo: fix
-        // assert_eq!(format!("{}", r), "5");
+        let r = execute(include_str!("../test/if_true.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "5");
     }
 
     #[test]

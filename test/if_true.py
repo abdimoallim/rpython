@@ -1,4 +1,4 @@
-if False:
+if True:
   x = 5
 else:
   x = 10
