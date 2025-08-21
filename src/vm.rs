@@ -24,6 +24,8 @@ pub struct Vm {
 
 impl Vm {
     pub fn with_builtins(mut self) -> Self {
+        self.register_native_module("os", crate::core::os::os_module());
+
         self.env.builtins.insert(
             "set".to_string(),
             PyObject::NativeFunction(Rc::new(PyNativeFunction {
