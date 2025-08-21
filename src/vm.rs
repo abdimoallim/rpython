@@ -3,7 +3,7 @@ use crate::object::*;
 use crate::opcode::*;
 use indexmap::IndexMap;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 #[derive(Clone, Default, PartialEq)]
@@ -25,6 +25,7 @@ pub struct Vm {
 impl Vm {
     pub fn with_builtins(mut self) -> Self {
         self.register_native_module("os", crate::core::os::os_module());
+        self.register_native_module("sys", crate::core::sys::sys_module());
         crate::core::globs::apply(&mut self.env.builtins);
         self
     }
