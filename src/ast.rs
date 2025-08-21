@@ -84,6 +84,13 @@ impl Compiler {
                         code.instructions.push(Op::StoreIndex);
                         Ok(())
                     }
+                    ast::Expr::Attribute(attr) => {
+                        self.compile_expr(&attr.value, code)?;
+                        let attr_idx = self.name_index(code, attr.attr.as_str());
+                        self.compile_expr(&a.value, code)?;
+                        code.instructions.push(Op::StoreAttr(attr_idx));
+                        Ok(())
+                    }
                     _ => Err("unsupported assignment target".to_string()),
                 }
             }
@@ -224,6 +231,28 @@ impl Compiler {
                 code.instructions.push(Op::Return);
                 Ok(())
             }
+            ast::Stmt::ClassDef(cd) => {
+                let mut class_code = CodeObject::default();
+
+                for stmt in &cd.body {
+                    self.compile_stmt(stmt, &mut class_code)?;
+                }
+
+                let none_idx = self.const_index(&mut class_code, PyObject::None);
+                class_code.instructions.push(Op::LoadConst(none_idx));
+
+                let code_idx = code.nested.len();
+                code.nested.push(class_code);
+                let name_idx = self.name_index(code, cd.name.as_str());
+
+                code.instructions.push(Op::ClassDef {
+                    name: name_idx,
+                    code_idx,
+                });
+
+                Ok(())
+            }
+            ast::Stmt::Pass(_) => Ok(()),
             _ => Err("unsupported statement".to_string()),
         }
     }
@@ -272,6 +301,12 @@ impl Compiler {
             ast::Expr::Name(n) => {
                 let idx = self.name_index(code, n.id.as_str());
                 code.instructions.push(Op::LoadName(idx));
+                Ok(())
+            }
+            ast::Expr::Attribute(attr) => {
+                self.compile_expr(&attr.value, code)?;
+                let attr_idx = self.name_index(code, attr.attr.as_str());
+                code.instructions.push(Op::LoadAttr(attr_idx));
                 Ok(())
             }
             ast::Expr::List(list) => {

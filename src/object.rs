@@ -2,7 +2,7 @@ use crate::bytecode::*;
 use crate::vm::*;
 use indexmap::IndexMap;
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
@@ -20,6 +20,21 @@ pub enum PyObject {
     Function(Rc<PyFunction>),
     NativeFunction(Rc<PyNativeFunction>),
     Type(PyType),
+    Class(Rc<PyClass>),
+    Instance(Rc<RefCell<PyInstance>>),
+}
+
+#[derive(Clone, PartialEq)]
+pub struct PyClass {
+    pub name: String,
+    pub methods: HashMap<String, PyObject>,
+    pub bases: Vec<Rc<PyClass>>,
+}
+
+#[derive(Clone, PartialEq)]
+pub struct PyInstance {
+    pub class: Rc<PyClass>,
+    pub attrs: HashMap<String, PyObject>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -70,6 +85,8 @@ impl Display for PyObject {
             PyObject::Function(func) => write!(f, "<function {}>", func.name),
             PyObject::NativeFunction(func) => write!(f, "<native function {}>", func.name),
             PyObject::Type(t) => write!(f, "<type {}>", t.name),
+            PyObject::Class(c) => write!(f, "<class '{}'>", c.name),
+            PyObject::Instance(i) => write!(f, "<{} object>", i.borrow().class.name),
         }
     }
 }
@@ -89,6 +106,8 @@ impl fmt::Debug for PyObject {
             PyObject::Function(func) => write!(f, "Function({})", func.name),
             PyObject::NativeFunction(func) => write!(f, "NativeFunction({})", func.name),
             PyObject::Type(t) => write!(f, "Type({})", t.name),
+            PyObject::Class(c) => write!(f, "Class({})", c.name),
+            PyObject::Instance(i) => write!(f, "Instance({})", i.borrow().class.name),
         }
     }
 }

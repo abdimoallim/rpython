@@ -43,6 +43,13 @@ pub enum Op {
     Continue,
     ForIter(usize),
     GetIter,
+    ClassDef {
+        name: usize,
+        code_idx: usize,
+    },
+    LoadAttr(usize),
+    StoreAttr(usize),
+    CallMethod(usize),
 }
 
 impl Display for Op {
@@ -92,6 +99,12 @@ impl Display for Op {
             Op::Continue => write!(f, "Continue"),
             Op::GetIter => write!(f, "GetIter"),
             Op::ForIter(exit) => write!(f, "ForIter({})", exit),
+            Op::ClassDef { name, code_idx } => {
+                write!(f, "ClassDef(name={}, code_idx={})", name, code_idx)
+            }
+            Op::LoadAttr(idx) => write!(f, "LoadAttr({})", idx),
+            Op::StoreAttr(idx) => write!(f, "StoreAttr({})", idx),
+            Op::CallMethod(argc) => write!(f, "CallMethod({})", argc),
         }
     }
 }

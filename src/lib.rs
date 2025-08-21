@@ -337,4 +337,47 @@ mod tests {
         let r = execute(include_str!("../test/for_range_neg_step.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "15");
     }
+
+    #[test]
+    fn class_definition() {
+        let r = execute(include_str!("../test/class_def.py"), &[]).unwrap();
+        assert!(format!("{}", r).contains("native function Foo"));
+    }
+
+    #[test]
+    fn class_instantiation() {
+        let r = execute(include_str!("../test/class_inst.py"), &[]).unwrap();
+        assert!(format!("{}", r).contains("Foo object"));
+    }
+
+    #[test]
+    fn class_method() {
+        let r = execute(include_str!("../test/class_method.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "7");
+    }
+
+    // @todo: fix
+    #[test]
+    fn class_init() {
+        let r = execute(include_str!("../test/class_init.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "10");
+    }
+
+    #[test]
+    fn class_attribute_assignment() {
+        let r = execute(include_str!("../test/class_attr_assign.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "5");
+    }
+
+    #[test]
+    fn class_method_with_args() {
+        let r = execute(include_str!("../test/class_method_args.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "7");
+    }
+
+    #[test]
+    fn class_instance_variables() {
+        let r = execute(include_str!("../test/class_inst_vars.py"), &[]).unwrap();
+        assert_eq!(format!("{}", r), "1");
+    }
 }

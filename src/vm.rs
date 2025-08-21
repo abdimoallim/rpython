@@ -169,6 +169,12 @@ impl Vm {
                         PyObject::Type(_) => PyType {
                             name: "type".to_string(),
                         },
+                        PyObject::Class(_) => PyType {
+                            name: "type".to_string(),
+                        },
+                        PyObject::Instance(inst) => PyType {
+                            name: inst.borrow().class.name.clone(),
+                        },
                     };
 
                     Ok(PyObject::Type(t))
@@ -749,6 +755,197 @@ impl Vm {
                     }
 
                     self.stack.push(PyObject::Set(Rc::new(RefCell::new(set))));
+                    ip += 1;
+                }
+                Op::ClassDef { name, code_idx } => {
+                    let class_name = cur.names[name].clone();
+                    let class_code = cur.nested[code_idx].clone();
+
+                    #[allow(unused_mut)]
+                    let mut class_env = self.env.clone();
+                    let mut class_vm = Vm {
+                        stack: Vec::new(),
+                        env: class_env,
+                        loop_stack: Vec::new(),
+                        iter_stack: Vec::new(),
+                    };
+
+                    class_vm.run(&class_code)?;
+
+                    let mut methods = HashMap::new();
+
+                    for (k, v) in class_vm.env.locals {
+                        methods.insert(k, v);
+                    }
+
+                    let class = PyClass {
+                        name: class_name.clone(),
+                        methods,
+                        bases: Vec::new(),
+                    };
+
+                    let constructor = PyNativeFunction {
+                        name: class_name.clone(),
+                        arity: usize::MAX,
+                        func: {
+                            let class_rc = Rc::new(class.clone());
+                            Rc::new(move |args| {
+                                let instance = PyInstance {
+                                    class: class_rc.clone(),
+                                    attrs: HashMap::new(),
+                                };
+                                let inst_obj = PyObject::Instance(Rc::new(RefCell::new(instance)));
+
+                                if let Some(init_method) = class_rc.methods.get("__init__") {
+                                    match init_method {
+                                        PyObject::Function(f) => {
+                                            let mut init_args = vec![inst_obj.clone()];
+                                            init_args.extend_from_slice(args);
+
+                                            let mut init_vm = Vm::default();
+                                            let mut new_env = Env::default();
+
+                                            for (i, name) in f
+                                                .code
+                                                .names
+                                                .iter()
+                                                .take(init_args.len())
+                                                .enumerate()
+                                            {
+                                                new_env
+                                                    .locals
+                                                    .insert(name.clone(), init_args[i].clone());
+                                            }
+
+                                            new_env.globals = f.globals.clone().globals;
+                                            init_vm.env = new_env;
+                                            init_vm.run(&f.code)?;
+                                        }
+                                        _ => {}
+                                    }
+                                }
+
+                                Ok(inst_obj)
+                            })
+                        },
+                    };
+
+                    self.env
+                        .locals
+                        .insert(class_name, PyObject::NativeFunction(Rc::new(constructor)));
+                    ip += 1;
+                }
+                Op::LoadAttr(idx) => {
+                    let attr_name = &cur.names[idx];
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match obj {
+                        PyObject::Instance(inst) => {
+                            let instance = inst.borrow();
+                            if let Some(value) = instance.attrs.get(attr_name) {
+                                self.stack.push(value.clone());
+                            } else if let Some(method) = instance.class.methods.get(attr_name) {
+                                match method {
+                                    PyObject::Function(f) => {
+                                        let bound_method = PyNativeFunction {
+                                            name: format!("{}.{}", instance.class.name, attr_name),
+                                            arity: f.arity - 1,
+                                            func: {
+                                                let f_clone = f.clone();
+                                                let inst_clone = PyObject::Instance(inst.clone());
+                                                Rc::new(move |args| {
+                                                    let mut full_args = vec![inst_clone.clone()];
+                                                    full_args.extend_from_slice(args);
+
+                                                    let mut method_vm = Vm::default();
+                                                    let mut new_env = Env::default();
+
+                                                    for (i, name) in f_clone
+                                                        .code
+                                                        .names
+                                                        .iter()
+                                                        .take(full_args.len())
+                                                        .enumerate()
+                                                    {
+                                                        new_env.locals.insert(
+                                                            name.clone(),
+                                                            full_args[i].clone(),
+                                                        );
+                                                    }
+
+                                                    new_env.globals =
+                                                        f_clone.globals.clone().globals;
+                                                    method_vm.env = new_env;
+                                                    method_vm.run(&f_clone.code)
+                                                })
+                                            },
+                                        };
+                                        self.stack
+                                            .push(PyObject::NativeFunction(Rc::new(bound_method)));
+                                    }
+                                    _ => self.stack.push(method.clone()),
+                                }
+                            } else {
+                                return Err(format!(
+                                    "AttributeError: '{}' object has no attribute '{}'",
+                                    instance.class.name, attr_name
+                                ));
+                            }
+                        }
+                        _ => return Err("AttributeError: object has no attributes".to_string()),
+                    }
+
+                    ip += 1;
+                }
+                Op::StoreAttr(idx) => {
+                    let attr_name = cur.names[idx].clone();
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match &obj {
+                        PyObject::Instance(inst) => {
+                            inst.borrow_mut().attrs.insert(attr_name, value);
+                        }
+                        _ => return Err("AttributeError: cannot set attribute".to_string()),
+                    }
+
+                    ip += 1;
+                }
+                Op::CallMethod(argc) => {
+                    let mut args = Vec::with_capacity(argc);
+
+                    for _ in 0..argc {
+                        args.push(
+                            self.stack
+                                .pop()
+                                .ok_or_else(|| "stack underflow".to_string())?,
+                        );
+                    }
+
+                    args.reverse();
+
+                    let method = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "stack underflow".to_string())?;
+
+                    match method {
+                        PyObject::NativeFunction(nf) => {
+                            let result = (nf.func)(&args)?;
+                            self.stack.push(result);
+                        }
+                        _ => return Err("TypeError: object not callable".to_string()),
+                    }
+
                     ip += 1;
                 }
             }
