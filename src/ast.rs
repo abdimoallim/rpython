@@ -253,6 +253,40 @@ impl Compiler {
                 Ok(())
             }
             ast::Stmt::Pass(_) => Ok(()),
+            ast::Stmt::Import(import) => {
+                for alias in &import.names {
+                    let name = alias.name.as_str();
+                    let idx = self.name_index(code, name);
+                    code.instructions.push(Op::Import(idx));
+                }
+
+                Ok(())
+            }
+            ast::Stmt::ImportFrom(import) => {
+                if let Some(module) = &import.module {
+                    let module_idx = self.name_index(code, module.as_str());
+
+                    if import.names.len() == 1 && import.names[0].name.as_str() == "*" {
+                        code.instructions.push(Op::ImportStar(module_idx));
+                    } else {
+                        let mut name_indices = Vec::new();
+
+                        for alias in &import.names {
+                            let name_idx = self.name_index(code, alias.name.as_str());
+                            name_indices.push(name_idx);
+                        }
+
+                        code.instructions.push(Op::ImportFrom {
+                            module: module_idx,
+                            names: name_indices,
+                        });
+                    }
+                } else {
+                    return Err("relative imports not supported".to_string());
+                }
+
+                Ok(())
+            }
             _ => Err("unsupported statement".to_string()),
         }
     }

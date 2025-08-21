@@ -380,4 +380,36 @@ mod tests {
         let r = execute(include_str!("../test/class_inst_vars.py"), &[]).unwrap();
         assert_eq!(format!("{}", r), "1");
     }
+
+    #[test]
+    fn module_import() {
+        std::fs::write("test_module.py", "x = 8").unwrap();
+        let r = execute("import test_module\ntest_module.x", &[]).unwrap();
+        std::fs::remove_file("test_module.py").unwrap();
+        assert_eq!(format!("{}", r), "8");
+    }
+
+    #[test]
+    fn module_from_import() {
+        std::fs::write("test_module2.py", "y = 100").unwrap();
+        let r = execute("from test_module2 import y\ny", &[]).unwrap();
+        std::fs::remove_file("test_module2.py").unwrap();
+        assert_eq!(format!("{}", r), "100");
+    }
+
+    #[test]
+    fn module_import_function() {
+        std::fs::write("test_func.py", "def add(a, b):\n  return a + b").unwrap();
+        let r = execute("from test_func import add\nadd(3, 4)", &[]).unwrap();
+        std::fs::remove_file("test_func.py").unwrap();
+        assert_eq!(format!("{}", r), "7");
+    }
+
+    #[test]
+    fn module_star_import() {
+        std::fs::write("test_star.py", "a = 1\nb = 2\n_private = 3").unwrap();
+        let r = execute("from test_star import *\na + b", &[]).unwrap();
+        std::fs::remove_file("test_star.py").unwrap();
+        assert_eq!(format!("{}", r), "3");
+    }
 }

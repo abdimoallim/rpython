@@ -50,6 +50,12 @@ pub enum Op {
     LoadAttr(usize),
     StoreAttr(usize),
     CallMethod(usize),
+    Import(usize),
+    ImportFrom {
+        module: usize,
+        names: Vec<usize>,
+    },
+    ImportStar(usize),
 }
 
 impl Display for Op {
@@ -105,6 +111,11 @@ impl Display for Op {
             Op::LoadAttr(idx) => write!(f, "LoadAttr({})", idx),
             Op::StoreAttr(idx) => write!(f, "StoreAttr({})", idx),
             Op::CallMethod(argc) => write!(f, "CallMethod({})", argc),
+            Op::Import(idx) => write!(f, "Import({})", idx),
+            Op::ImportFrom { module, names } => {
+                write!(f, "ImportFrom(module={}, names={:?})", module, names)
+            }
+            Op::ImportStar(idx) => write!(f, "ImportStar({})", idx),
         }
     }
 }

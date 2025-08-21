@@ -22,6 +22,13 @@ pub enum PyObject {
     Type(PyType),
     Class(Rc<PyClass>),
     Instance(Rc<RefCell<PyInstance>>),
+    Module(Rc<RefCell<PyModule>>),
+}
+
+#[derive(Clone, PartialEq)]
+pub struct PyModule {
+    pub name: String,
+    pub dict: HashMap<String, PyObject>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -87,6 +94,7 @@ impl Display for PyObject {
             PyObject::Type(t) => write!(f, "<type {}>", t.name),
             PyObject::Class(c) => write!(f, "<class '{}'>", c.name),
             PyObject::Instance(i) => write!(f, "<{} object>", i.borrow().class.name),
+            PyObject::Module(m) => write!(f, "<module '{}'>", m.borrow().name),
         }
     }
 }
@@ -108,6 +116,7 @@ impl fmt::Debug for PyObject {
             PyObject::Type(t) => write!(f, "Type({})", t.name),
             PyObject::Class(c) => write!(f, "Class({})", c.name),
             PyObject::Instance(i) => write!(f, "Instance({})", i.borrow().class.name),
+            PyObject::Module(m) => write!(f, "Module({})", m.borrow().name),
         }
     }
 }

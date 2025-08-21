@@ -19,6 +19,7 @@ pub struct Vm {
     pub env: Env,
     pub loop_stack: Vec<(usize, usize)>,
     pub iter_stack: Vec<(usize, PyObject)>,
+    pub modules: HashMap<String, PyObject>,
 }
 
 impl Vm {
@@ -175,6 +176,9 @@ impl Vm {
                         PyObject::Instance(inst) => PyType {
                             name: inst.borrow().class.name.clone(),
                         },
+                        PyObject::Module(_) => PyType {
+                            name: "module".to_string(),
+                        },
                     };
 
                     Ok(PyObject::Type(t))
@@ -197,6 +201,40 @@ impl Vm {
                 func: Rc::new(f),
             })),
         );
+    }
+
+    fn load_module(&mut self, name: &str) -> Result<PyObject, String> {
+        if let Some(module) = self.modules.get(name) {
+            return Ok(module.clone());
+        }
+
+        let filename = format!("{}.py", name);
+        let source = std::fs::read_to_string(&filename)
+            .map_err(|_| format!("ModuleNotFoundError: No module named '{}'", name))?;
+
+        let mut compiler = crate::ast::Compiler::default();
+        let code = compiler.compile(&source)?;
+
+        let mut module_vm = Vm {
+            stack: Vec::new(),
+            env: Env::default(),
+            loop_stack: Vec::new(),
+            iter_stack: Vec::new(),
+            modules: self.modules.clone(),
+        }
+        .with_builtins();
+
+        module_vm.run(&code)?;
+
+        let module = PyModule {
+            name: name.to_string(),
+            dict: module_vm.env.locals,
+        };
+
+        let module_obj = PyObject::Module(Rc::new(RefCell::new(module)));
+        self.modules.insert(name.to_string(), module_obj.clone());
+
+        Ok(module_obj)
     }
 
     pub fn run(&mut self, code: &CodeObject) -> Result<PyObject, String> {
@@ -768,6 +806,7 @@ impl Vm {
                         env: class_env,
                         loop_stack: Vec::new(),
                         iter_stack: Vec::new(),
+                        ..Default::default()
                     };
 
                     class_vm.run(&class_code)?;
@@ -895,6 +934,17 @@ impl Vm {
                                 ));
                             }
                         }
+                        PyObject::Module(m) => {
+                            let module = m.borrow();
+                            if let Some(value) = module.dict.get(attr_name) {
+                                self.stack.push(value.clone());
+                            } else {
+                                return Err(format!(
+                                    "AttributeError: module '{}' has no attribute '{}'",
+                                    module.name, attr_name
+                                ));
+                            }
+                        }
                         _ => return Err("AttributeError: object has no attributes".to_string()),
                     }
 
@@ -944,6 +994,51 @@ impl Vm {
                             self.stack.push(result);
                         }
                         _ => return Err("TypeError: object not callable".to_string()),
+                    }
+
+                    ip += 1;
+                }
+                Op::Import(idx) => {
+                    let module_name = &cur.names[idx];
+                    let module = self.load_module(module_name)?;
+                    self.env.locals.insert(module_name.clone(), module);
+                    ip += 1;
+                }
+                Op::ImportFrom { module, ref names } => {
+                    let module_name = cur.names[module].clone();
+                    let module_obj = self.load_module(&module_name)?;
+
+                    if let PyObject::Module(m) = module_obj {
+                        let module_dict = &m.borrow().dict;
+
+                        for name_idx in names {
+                            let name = cur.names[*name_idx].clone();
+
+                            if let Some(value) = module_dict.get(&name) {
+                                self.env.locals.insert(name.clone(), value.clone());
+                            } else {
+                                return Err(format!(
+                                    "ImportError: cannot import name '{}' from '{}'",
+                                    name, module_name
+                                ));
+                            }
+                        }
+                    }
+
+                    ip += 1;
+                }
+                Op::ImportStar(idx) => {
+                    let module_name = cur.names[idx].clone();
+                    let module_obj = self.load_module(&module_name)?;
+
+                    if let PyObject::Module(m) = module_obj {
+                        let module_dict = &m.borrow().dict;
+
+                        for (name, value) in module_dict {
+                            if !name.starts_with('_') {
+                                self.env.locals.insert(name.clone(), value.clone());
+                            }
+                        }
                     }
 
                     ip += 1;
