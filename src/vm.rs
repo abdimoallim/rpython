@@ -27,6 +27,8 @@ impl Vm {
         self.register_native_module("os", crate::core::os::os_module());
         self.register_native_module("sys", crate::core::sys::sys_module());
         self.register_native_module("io", crate::core::io::io_module());
+        self.register_native_module("time", crate::core::time::time_module());
+        self.register_native_module("math", crate::core::math::math_module());
         crate::core::globs::apply(&mut self.env.builtins);
         self
     }
